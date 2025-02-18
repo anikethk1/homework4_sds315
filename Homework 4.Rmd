@@ -1,0 +1,148 @@
+---
+title: "Homework 4"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+options(scipen = 999)
+```
+
+**Name:** Aniketh Kalagara
+
+**UT EID:** ak54432
+
+**Github Repository:** https://github.com/anikethk1/homework4_sds315
+
+```{r}
+library(mosaic)
+
+chi_squared_statistic = function(observed, expected) {
+  sum((observed - expected)^2 / expected)
+}
+```
+
+
+# **Question 1**
+
+Null Hypothesis: Securities trades from the Iron Bank are flagged at the same rate of 2.4% as of other traders.
+
+Test Statistic: Number of flagged trades out of 2021 for Iron Bank.
+
+```{r}
+sim_sec = do(100000)*nflip(n=2021, prob=0.024)
+ggplot(sim_sec) + 
+  geom_histogram(aes(x=nflip)) +
+  labs(title = "Distribution of Monte Carlo Simulations for Number of Flagged Trades",  x = "Number of Flagged Trades", y = "Frequency")
+```
+
+P-Value: `r sum(sim_sec >= 70)/100000`
+
+Conclusion: The p-value is significantly smaller than the threshold for statistically significant at p < 0.05 which indicates that the null hypothesis does not look plausible given the data and that Iron Bank is likely to be violating insider trading laws due to their flagged trades being significantly higher than the baseline value of 2.4%.
+
+# **Question 2**
+
+Null Hypothesis: All restaurants in the city are cited for health code violations at the same rate of 3%, including Gourmet Bites.
+
+Test Statistic: Number of health code violations out of 50 for Gourmet Bites.
+
+```{r}
+sim_gourmet = do(100000)*nflip(n=50, prob=0.03)
+ggplot(sim_gourmet) + 
+  geom_histogram(aes(x=nflip), binwidth=1) +
+  labs(title = "Distribution of Monte Carlo Simulations for Number of Health Code Violations",  x = "Number of Health Code Violations", y = "Frequency")
+```
+
+P-Value: `r sum(sim_gourmet >= 8)/100000`
+
+Conclusion: The p-value is significantly smaller than the threshold for statistically significant at p < 0.05 which indicates that the null hypothesis does not look plausible given the data and that the Health Department might need to take action on Gourmet Bites due to their violations being significantly more than the baseline value of 3%
+
+# **Question 3**
+
+Null Hypothesis: The distribution of jurors empaneled by the judge matches the country's population proportions indicating no bias upon selection of the panel.
+
+Test Statistic: Chi-squared deviations of observed empaneled jurors to expected empaneled jurors.
+
+```{r}
+expected_jurors = c(Group_1 = 0.3, Group_2 = 0.25, Group_3 = 0.2, Group_4 = 0.15, Group_5 = 0.1)
+observed_jurors = c(Group_1 = 85, Group_2 = 56, Group_3 = 59, Group_4 = 27, Group_5 = 13)
+observed_chi = chi_squared_statistic(observed_jurors, 240*expected_jurors)
+
+chi_jurors = do(100000)*{
+  simulated_jurors = rmultinom(1, 240, expected_jurors)
+  chi_val_jurors = chi_squared_statistic(simulated_jurors, 240*expected_jurors)
+  c(chi_vals_jurors = chi_val_jurors)
+}
+```
+
+P-Value: `r sum(chi_jurors >= observed_chi)/100000`
+
+Conclusion: The p-value is smaller than the threshold for statistically significant at p < 0.05, but not of an immense amount. This does not necessarily mean there is systematic bias in the jury selection process. Some racial and ethnic groups are more prone to hardship excuse due to being a minority population or being immigrants which make it more probable that they will be excused. It also depends on the kind of cases taken by the judge which effect the racial group to which attorneys pick jurors in terms of removal for peremptory challenges. A racial group could have a higher population within a certain job category or live in a certain area which may directly effect the result of the cases which the judge undertakes due to possible biases from the jurors. 
+
+The result is statistically significant in terms of the p-value being within the statistically significant threshold, but further investigation needs to be done. Understanding the cases done by the judge, measuring the type of removal based on the different groups, and comparing this distribution to other judges' jury selection distribution are all ways in which this investigation for bias can go further.
+
+# **Question 4**
+
+```{r}
+letter_frequencies = read.csv("letter_frequencies.csv")
+
+brown_sentences = readLines("brown_sentences.txt")
+clean_brown = gsub("[^A-Za-z] ", "", brown_sentences)
+clean_brown = toupper(clean_brown)
+
+chi_stats = c()
+for (sentence in clean_brown) {
+  observed_counts = table(factor(strsplit(sentence, "")[[1]], levels = letter_frequencies$Letter))
+  total_letters = sum(observed_counts)
+  expected_counts = total_letters * letter_frequencies$Probability
+  chi_squared_stat = sum((observed_counts - expected_counts)^2 / expected_counts)
+  chi_stats = append(chi_stats, chi_squared_stat)
+}
+```
+
+```{r}
+sentences <- c(
+  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+  "The museum’s new exhibit features ancient artifacts from various civilizations around the world.",
+  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+  "The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.",
+  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+  "The committee reviewed the proposal and provided many points of useful feedback to improve the project’s effectiveness.",
+  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations."
+)
+
+sentence_p_vals = c()
+for (sentence in sentences) {
+  observed_counts = table(factor(strsplit(sentence, "")[[1]], levels = letter_frequencies$Letter))
+  total_letters = sum(observed_counts)
+  expected_counts = total_letters * letter_frequencies$Probability
+  chi_squared_stat = sum((observed_counts - expected_counts)^2 / expected_counts)
+  sentence_p_val = sum(chi_stats >= chi_squared_stat)/56745
+  sentence_p_vals = append(sentence_p_vals, sentence_p_val)
+}
+```
+
+Sentence Number | P-Value
+--------|---------------------------
+Sentence 1 | `r round(sentence_p_vals[1],3)`
+Sentence 2 | `r round(sentence_p_vals[2],3)`
+Sentence 3 | `r round(sentence_p_vals[3],3)`
+Sentence 4 | `r round(sentence_p_vals[4],3)`
+Sentence 5 | `r round(sentence_p_vals[5],3)`
+Sentence 6 | `r round(sentence_p_vals[6],3)`
+Sentence 7 | `r round(sentence_p_vals[7],3)`
+Sentence 8 | `r round(sentence_p_vals[8],3)`
+Sentence 9 | `r round(sentence_p_vals[9],3)`
+Sentence 10 | `r round(sentence_p_vals[10],3)`
+
+Sentence 6 is probably the one produced by the LLM due to the p-value being significantly lower than the other p-values in the above table.
+
+
+
+
+
